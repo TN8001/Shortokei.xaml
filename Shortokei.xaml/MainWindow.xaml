@@ -1,0 +1,172 @@
+﻿<Window
+  x:Class="Shortokei.xaml.MainWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
+  xmlns:linq="clr-namespace:System.Linq;assembly=System.Core"
+  xmlns:sys="clr-namespace:System;assembly=mscorlib"
+  Width="400"
+  Height="30"
+  MinWidth="100"
+  MinHeight="10"
+  AllowsTransparency="True"
+  Background="{x:Null}"
+  ContentRendered="Window_ContentRendered"
+  FontFamily="MS UI Gothic"
+  FontSize="8pt"
+  Topmost="True"
+  WindowStyle="None">
+
+  <behaviors:Interaction.Triggers>
+
+    <!--  ドラッグ移動  -->
+    <behaviors:EventTrigger EventName="MouseLeftButtonDown">
+      <behaviors:CallMethodAction MethodName="DragMove" />
+    </behaviors:EventTrigger>
+
+    <!--  右クリックで終了  -->
+    <behaviors:EventTrigger EventName="MouseRightButtonDown">
+      <behaviors:CallMethodAction MethodName="Close" />
+    </behaviors:EventTrigger>
+  </behaviors:Interaction.Triggers>
+
+  <Window.Resources>
+
+    <!--  数字生成  -->
+    <ObjectDataProvider x:Key="Range" MethodName="Range" ObjectType="{x:Type linq:Enumerable}">
+      <ObjectDataProvider.MethodParameters>
+        <sys:Int32>0</sys:Int32>
+        <sys:Int32>24</sys:Int32>
+      </ObjectDataProvider.MethodParameters>
+    </ObjectDataProvider>
+  </Window.Resources>
+
+  <!--  外枠&背景  -->
+  <Border BorderBrush="#808080" BorderThickness="1" CornerRadius="4">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Color="#C8FFFFFF" />
+        <GradientStop Offset="1" Color="#14F5F5F5" />
+      </LinearGradientBrush>
+    </Border.Background>
+    <Grid>
+
+      <!--  数字  -->
+      <ItemsControl VerticalAlignment="Bottom" ItemsSource="{Binding Source={StaticResource Range}}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Rows="1" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock
+              HorizontalAlignment="Center"
+              Text="{Binding}"
+              TextOptions.TextFormattingMode="Display"
+              TextOptions.TextHintingMode="Fixed"
+              TextOptions.TextRenderingMode="Auto" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!--  時計がバーに付いていきつつはみ出さないハック  -->
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" MinWidth="{Binding ActualWidth, ElementName=spacer, Mode=OneWay}" />
+          <ColumnDefinition MaxWidth="{Binding ActualWidth, ElementName=spacer, Mode=OneWay}" />
+          <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <!--  バー  -->
+        <Rectangle
+          Name="myRectangle"
+          Grid.ColumnSpan="2"
+          Width="0"
+          HorizontalAlignment="Left">
+          <Rectangle.Fill>
+            <VisualBrush AlignmentX="Left" Stretch="None">
+              <VisualBrush.Visual>
+                <Rectangle Width="400" Height="30">
+                  <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                      <GradientStop Color="#80FF7FBF" />
+                      <GradientStop Offset="1" Color="#807FBFFF" />
+                    </LinearGradientBrush>
+                  </Rectangle.Fill>
+                </Rectangle>
+              </VisualBrush.Visual>
+            </VisualBrush>
+          </Rectangle.Fill>
+          <Rectangle.Triggers>
+            <EventTrigger RoutedEvent="Loaded">
+
+              <!--
+                BeginStoryboardに名前を付けないとSeekできない（これはハマるｗ
+                
+                https://docs.microsoft.com/ja-jp/previous-versions/dotnet/netframework-3.5/ms744905(v=vs.90)?redirectedfrom=MSDN
+                > BeginStoryboard は、Name プロパティを指定することによって名前を設定すると、
+                > 制御可能なストーリーボードになります。
+                > ストーリーボードは、開始されると対話的に制御できます。
+              -->
+              <BeginStoryboard Name="MyBeginStoryboard">
+                <Storyboard Name="myStoryboard" RepeatBehavior="Forever" Duration="1.0:0:0">
+                  <DoubleAnimation Storyboard.TargetProperty="Width" To="400" Duration="1.0:0:0" />
+                </Storyboard>
+              </BeginStoryboard>
+            </EventTrigger>
+          </Rectangle.Triggers>
+        </Rectangle>
+
+        <!--  時計  -->
+        <Grid Grid.Column="1" Grid.ColumnSpan="2" HorizontalAlignment="Right">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+          </Grid.ColumnDefinitions>
+          <Rectangle x:Name="spacer" />
+          <Border
+            Grid.ColumnSpan="2"
+            Margin="0,0,0,10"
+            Padding="1"
+            VerticalAlignment="Center"
+            BorderBrush="#808080"
+            BorderThickness="1"
+            CornerRadius="4">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                <GradientStop Color="#C8FFFFFF" />
+                <GradientStop Offset="1" Color="#14F5F5F5" />
+              </LinearGradientBrush>
+            </Border.Background>
+
+            <!--
+              xamlデジタル時計
+              [Create a digital clock using only xaml code in wpf - Stack Overflow]
+              (https://stackoverflow.com/questions/55350358/create-a-digital-clock-using-only-xaml-code-in-wpf/61933419#61933419)
+            -->
+            <Grid>
+              <Grid.Resources>
+                <sys:DateTime x:Key="DateTime" x:Shared="False" />
+              </Grid.Resources>
+              <TextBlock DataContext="{StaticResource DateTime}" Text="{Binding DataContext.Now, StringFormat=HH:mm, RelativeSource={RelativeSource Self}}">
+                <TextBlock.Triggers>
+                  <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                      <Storyboard>
+                        <ObjectAnimationUsingKeyFrames RepeatBehavior="Forever" Storyboard.TargetProperty="DataContext" Duration="0:0:1">
+                          <DiscreteObjectKeyFrame KeyTime="50%" Value="{StaticResource DateTime}" />
+                        </ObjectAnimationUsingKeyFrames>
+                      </Storyboard>
+                    </BeginStoryboard>
+                  </EventTrigger>
+                </TextBlock.Triggers>
+              </TextBlock>
+            </Grid>
+          </Border>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>
